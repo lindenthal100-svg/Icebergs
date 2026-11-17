@@ -68,19 +68,31 @@
   .einleitung { max-width: 66ch; }
   .notiz { color: var(--grau); margin: 0 0 22px; max-width: 70ch; }
 
-  /* Vorher-Nachher */
-  .vergleich { max-width: 760px; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--linie);
-               background: #000; user-select: none; }
-  .vergleich img { display: block; width: 100%; height: auto; }
-  .vergleich .oben { position: absolute; inset: 0; clip-path: inset(0 50% 0 0); }
-  .trenner { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px;
-             background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); pointer-events: none; }
-  .marke-jahr { position: absolute; top: 12px; padding: 4px 10px; border-radius: 4px; font-weight: 700;
-                background: rgba(255,255,255,.9); color: #1f2a33; font-variant-numeric: tabular-nums; }
-  .marke-jahr.links { left: 12px; } .marke-jahr.rechts { right: 12px; }
-  .regler { margin: 14px 2px 0; max-width: 760px; }
-  .regler label { display: block; font-size: 0.92rem; color: var(--grau); margin-bottom: 4px; }
+  /* Zeitraffer */
+  .zeitraffer { position: relative; max-width: 760px; border-radius: 8px; overflow: hidden;
+                border: 1px solid var(--linie); background: #000; }
+  .zeitraffer img { display: block; width: 100%; height: auto; transition: opacity .45s ease; }
+  .zeitraffer img + img { position: absolute; inset: 0; }
+  .zeitraffer img.unsichtbar { opacity: 0; }
+  .marke-jahr { position: absolute; top: 12px; left: 12px; padding: 5px 11px; border-radius: 4px;
+                font-weight: 700; font-size: 1.15rem; background: rgba(255,255,255,.92); color: #1f2a33;
+                font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .marke-jahr small { display: block; font-weight: 500; font-size: 0.8rem; }
+  .zr-steuer { max-width: 760px; margin: 0 0 14px; display: flex; gap: 14px; align-items: flex-start; }
+  .zr-steuer button { font: inherit; font-weight: 600; padding: 7px 16px; border-radius: 4px; cursor: pointer;
+                      border: 1px solid var(--fels); background: var(--fels); color: var(--firn); min-width: 7.5em; }
+  .zr-skala-huelle { flex: 1; min-width: 0; }
+  .zr-skala { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--grau);
+              font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   input[type=range] { width: 100%; accent-color: var(--eis); }
+  figure.breit { margin: 0; }
+  figure.breit img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--linie); background: #fff; }
+  @media (prefers-reduced-motion: reduce) { .zeitraffer img { transition: none; } }
+  @media (max-width: 560px) {
+    .zr-steuer { flex-direction: column; align-items: stretch; }
+    .zr-skala span:not(:first-child):not(:last-child) { display: none; }
+  }
 
   /* Jahr für Jahr */
   .jahre { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
@@ -175,30 +187,62 @@
     '</dl></header>' +
     '<section aria-labelledby="t-gl" class="einleitung"><h2 id="t-gl">Der Gletscher</h2><p>' + G.text + '</p></section>');
 
-  // ---------- Vorher-Nachher ----------
+  // ---------- Zeitraffer: jedes Jahr als ganzes Bild ----------
   var rgb = G.medien.rgb || [];
+  var tagVon = function (j) {
+    var z = J.filter(function (q) { return q.jahr === j; })[0];
+    return z ? new Date(z.datum + "T12:00:00Z").toLocaleDateString("de-DE",
+      { day: "numeric", month: "long", timeZone: "UTC" }) : "";
+  };
   if (rgb.length >= 2) {
-    var j0 = rgb[0], j1 = rgb[rgb.length - 1];
     main.insertAdjacentHTML("beforeend",
-      '<section aria-labelledby="t-vn"><h2 id="t-vn">' + j0 + ' und ' + j1 + ' im Vergleich</h2>' +
-      '<p class="notiz">Echtfarbenbilder vom Ende des Sommers. Gelb ist der Gletscherumriss. Zieh den Regler, um zwischen den Jahren zu wechseln.</p>' +
-      '<div class="vergleich" id="vergleich"><img src="bilder/rgb_' + j1 + '.jpg" alt="Gletscher ' + j1 + '">' +
-        '<img class="oben" id="vn-oben" src="bilder/rgb_' + j0 + '.jpg" alt="Gletscher ' + j0 + '">' +
-        '<div class="trenner" id="vn-trenner"></div>' +
-        '<span class="marke-jahr links">' + j0 + '</span><span class="marke-jahr rechts">' + j1 + '</span></div>' +
-      '<div class="regler"><label for="vn-regler">Anteil ' + j0 + ' / ' + j1 + '</label>' +
-      '<input id="vn-regler" type="range" min="0" max="100" value="50" aria-valuetext="Hälfte"></div></section>');
-    var reg = document.getElementById("vn-regler");
-    reg.addEventListener("input", function () {
-      var v = +reg.value;
-      document.getElementById("vn-oben").style.clipPath = "inset(0 " + (100 - v) + "% 0 0)";
-      document.getElementById("vn-trenner").style.left = v + "%";
-      reg.setAttribute("aria-valuetext", v + " Prozent " + j0);
+      '<section aria-labelledby="t-zr"><h2 id="t-zr">Zeitraffer ' + rgb[0] + ' bis ' + rgb[rgb.length - 1] + '</h2>' +
+      '<p class="notiz">Jedes Bild zeigt den ganzen Gletscher am Ende eines Sommers. Wähle mit dem Regler das Jahr ' +
+      'oder lass die Jahre mit „Abspielen“ nacheinander durchlaufen. Weiß ist Schnee, grau blankes Eis, gelb der Gletscherumriss.</p>' +
+      '<div class="zr-steuer"><button type="button" id="zr-spiel" aria-pressed="false">Abspielen</button>' +
+        '<div class="zr-skala-huelle"><label for="zr-regler" class="sr">Jahr wählen</label>' +
+        '<input id="zr-regler" type="range" min="0" max="' + (rgb.length - 1) + '" step="1" value="0">' +
+        '<div class="zr-skala" aria-hidden="true">' + rgb.map(function (j) { return '<span>' + j + '</span>'; }).join("") + '</div></div></div>' +
+      '<div class="zeitraffer"><img id="zr-0" alt=""><img id="zr-1" alt="" class="unsichtbar">' +
+        '<span class="marke-jahr links" id="zr-marke"></span></div>' +
+      '</section>');
+    rgb.forEach(function (j) { var im = new Image(); im.src = "bilder/rgb_" + j + ".jpg"; });   // vorladen
+    var bilderZr = [document.getElementById("zr-0"), document.getElementById("zr-1")], aktiv = 0;
+    var reglerZr = document.getElementById("zr-regler"), spiel = document.getElementById("zr-spiel"), takt = null;
+    var zeigeZr = function (i) {
+      var j = rgb[i], neu = bilderZr[1 - aktiv], alt = bilderZr[aktiv];
+      neu.onload = function () { neu.classList.remove("unsichtbar"); alt.classList.add("unsichtbar"); aktiv = 1 - aktiv; };
+      neu.src = "bilder/rgb_" + j + ".jpg";
+      neu.alt = "Gletscher am Ende des Sommers " + j;
+      document.getElementById("zr-marke").innerHTML = j + '<small>' + tagVon(j) + '</small>';
+      reglerZr.value = i;
+      reglerZr.setAttribute("aria-valuetext", j + ", Bild vom " + tagVon(j));
+    };
+    bilderZr[0].src = "bilder/rgb_" + rgb[0] + ".jpg";
+    bilderZr[0].alt = "Gletscher am Ende des Sommers " + rgb[0];
+    document.getElementById("zr-marke").innerHTML = rgb[0] + '<small>' + tagVon(rgb[0]) + '</small>';
+    reglerZr.setAttribute("aria-valuetext", rgb[0] + ", Bild vom " + tagVon(rgb[0]));
+    var anhalten = function () { clearInterval(takt); takt = null; spiel.textContent = "Abspielen"; spiel.setAttribute("aria-pressed", "false"); };
+    reglerZr.addEventListener("input", function () { anhalten(); zeigeZr(+reglerZr.value); });
+    spiel.addEventListener("click", function () {
+      if (takt) { anhalten(); return; }
+      if (+reglerZr.value >= rgb.length - 1) zeigeZr(0);
+      spiel.textContent = "Anhalten"; spiel.setAttribute("aria-pressed", "true");
+      takt = setInterval(function () {
+        var n = +reglerZr.value + 1;
+        if (n >= rgb.length) { anhalten(); return; }
+        zeigeZr(n);
+      }, 1400);
     });
-  } else if (G.medien["vergleich.png"]) {
+  }
+
+  // ---------- Veränderungskarte über die ganze Fläche ----------
+  if (G.medien["vergleich.png"]) {
     main.insertAdjacentHTML("beforeend",
-      '<section aria-labelledby="t-vn"><h2 id="t-vn">' + A.jahr + ' und ' + Z.jahr + ' im Vergleich</h2>' +
-      '<figure style="margin:0"><img src="bilder/vergleich.png" alt="Vergleich erstes und letztes Jahr" style="width:100%;height:auto;border-radius:6px"></figure></section>');
+      '<section aria-labelledby="t-vk"><h2 id="t-vk">Wo sich der Gletscher verändert hat</h2>' +
+      '<p class="notiz">Links das erste, in der Mitte das letzte Jahr. Rechts die Veränderung über die ganze Fläche: ' +
+      'rot ist, was ' + A.jahr + ' Eis oder Schnee war und ' + Z.jahr + ' nicht mehr; blau, was neu hinzugekommen ist (meist Schnee).</p>' +
+      '<figure class="breit"><img src="bilder/vergleich.png" alt="Erstes und letztes Jahr mit Karte der Veränderung" loading="lazy"></figure></section>');
   }
 
   // ---------- Jahr für Jahr ----------
