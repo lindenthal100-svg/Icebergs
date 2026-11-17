@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mer de Glace – Gletscher im Wandel</title>
+<meta name="description" content="Mer de Glace: Eisfläche, Schneegrenze und Massenbilanz aus Sentinel-2-Bildern">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --firn: #eef2f4;
+    --flaeche: #f8fafb;
+    --fels: #1f2a33;
+    --grau: #56656f;
+    --linie: #cfd8de;
+    --eis: #2e7fc4;
+    --schnee: #dbe4ea;
+    --verlust: #c8372d;
+    --gold: #e0a800;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --firn: #11181d;
+      --flaeche: #182229;
+      --fels: #e4eaee;
+      --grau: #9db0bc;
+      --linie: #2c3a44;
+      --eis: #6bb2ec;
+      --schnee: #5a6b77;
+      --verlust: #ff6b5e;
+      --gold: #ffcf40;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--firn); color: var(--fels);
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 1.0625rem; line-height: 1.6;
+  }
+  .rahmen { max-width: 1120px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+  a { color: var(--eis); text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 3px solid var(--gold); outline-offset: 3px; border-radius: 2px;
+  }
+  h1 {
+    margin: 0; font-size: clamp(3.4rem, 11.5vw, 9.5rem); line-height: 0.88; font-weight: 800;
+    font-variation-settings: "wdth" 125; letter-spacing: -0.03em; hyphens: manual;
+  }
+  h2 { margin: 0 0 6px; font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.15;
+       font-weight: 700; font-variation-settings: "wdth" 112; }
+  h3 { margin: 0 0 4px; font-size: 1.1rem; }
+  .kopf { padding: clamp(28px, 6vw, 64px) 0 0; }
+  .unterzeile { margin: 14px 0 0; font-size: clamp(1.15rem, 2.2vw, 1.45rem); color: var(--grau); }
+  .eckdaten {
+    margin: 36px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0; border-top: 2px solid var(--fels);
+  }
+  .eckdaten div { padding: 14px 18px 0 0; }
+  .eckdaten dt { color: var(--grau); font-size: 0.95rem; }
+  .eckdaten dd { margin: 2px 0 0; font-size: clamp(1.6rem, 3.4vw, 2.4rem); font-weight: 600;
+                 font-variation-settings: "wdth" 108; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .eckdaten dd small { display: block; font-size: 0.95rem; font-weight: 400; color: var(--grau); }
+  section { padding: clamp(44px, 7vw, 76px) 0 0; }
+  .einleitung { max-width: 66ch; }
+  .notiz { color: var(--grau); margin: 0 0 22px; max-width: 70ch; }
+
+  /* Vorher-Nachher */
+  .vergleich { max-width: 760px; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--linie);
+               background: #000; user-select: none; }
+  .vergleich img { display: block; width: 100%; height: auto; }
+  .vergleich .oben { position: absolute; inset: 0; clip-path: inset(0 50% 0 0); }
+  .trenner { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px;
+             background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); pointer-events: none; }
+  .marke-jahr { position: absolute; top: 12px; padding: 4px 10px; border-radius: 4px; font-weight: 700;
+                background: rgba(255,255,255,.9); color: #1f2a33; font-variant-numeric: tabular-nums; }
+  .marke-jahr.links { left: 12px; } .marke-jahr.rechts { right: 12px; }
+  .regler { margin: 14px 2px 0; max-width: 760px; }
+  .regler label { display: block; font-size: 0.92rem; color: var(--grau); margin-bottom: 4px; }
+  input[type=range] { width: 100%; accent-color: var(--eis); }
+
+  /* Jahr für Jahr */
+  .jahre { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+  .jahre button {
+    font: inherit; font-variant-numeric: tabular-nums; padding: 6px 12px; border-radius: 4px;
+    border: 1px solid var(--linie); background: var(--flaeche); color: var(--fels); cursor: pointer;
+  }
+  .jahre button[aria-pressed="true"] { background: var(--fels); color: var(--firn); border-color: var(--fels); }
+  .jahr-raster { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 28px; align-items: start; }
+  .jahr-raster img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--linie); background: #fff; }
+  .werte { border-top: 3px solid var(--eis); padding-top: 12px; }
+  .werte dl { margin: 10px 0 0; display: grid; grid-template-columns: auto auto; gap: 6px 14px; }
+  .werte dt { color: var(--grau); font-size: 0.95rem; }
+  .werte dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .werte .datum { font-size: 1.35rem; font-weight: 700; }
+
+  /* Diagramme */
+  .diagramme { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .diagramm { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; padding: 14px 14px 6px; }
+  .diagramm p { margin: 0 0 6px; color: var(--grau); font-size: 0.9rem; line-height: 1.4; }
+  .diagramm svg { display: block; width: 100%; height: auto; }
+  .achse { stroke: var(--linie); }
+  .achse-text { fill: var(--grau); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  /* Erklärung */
+  .erklaerung { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 48px; }
+  .erklaerung p { margin: 0 0 12px; max-width: 60ch; }
+  .grenzen li { margin-bottom: 8px; max-width: 62ch; }
+
+  /* Tabelle */
+  .tabelle-huelle { overflow-x: auto; border: 1px solid var(--linie); border-radius: 6px; background: var(--flaeche); }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+  th, td { padding: 9px 14px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--linie); }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  th { color: var(--grau); font-weight: 600; }
+  footer { margin-top: clamp(48px, 8vw, 88px); padding: 26px 0 40px; border-top: 1px solid var(--linie);
+           color: var(--grau); font-size: 0.92rem; }
+  footer p { max-width: 80ch; margin: 0 0 10px; }
+  .fehler { margin: 40px 0; padding: 18px 20px; border-left: 4px solid var(--verlust); background: var(--flaeche); }
+
+  @media (max-width: 900px) {
+    .diagramme { grid-template-columns: minmax(0, 1fr); }
+    .jahr-raster, .erklaerung { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 560px) { .eckdaten { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<main class="rahmen" id="inhalt">
+  <noscript><p class="fehler">Diese Seite braucht JavaScript, um die Messdaten anzuzeigen.</p></noscript>
+</main>
+<script src="daten.js"></script>
+<script>
+(function () {
+  "use strict";
+  var G = window.GLETSCHER, main = document.getElementById("inhalt");
+  if (!G || !G.jahre || G.jahre.length < 2) {
+    main.insertAdjacentHTML("beforeend", '<p class="fehler">Keine Messdaten gefunden. Erzeuge sie mit ' +
+      '<code>python alpen_webseite_erstellen.py</code>.</p>');
+    return;
+  }
+  var J = G.jahre, N = J.length, A = J[0], Z = J[N - 1], SVGNS = "http://www.w3.org/2000/svg";
+  function zahl(x, s) {
+    if (x === null || x === undefined || isNaN(x)) return "–";
+    return Number(x).toLocaleString("de-DE", { minimumFractionDigits: s || 0, maximumFractionDigits: s || 0 });
+  }
+  function datum(iso) {
+    return new Date(iso + "T12:00:00Z").toLocaleDateString("de-DE",
+      { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  }
+  function el(n, a, p) { var e = document.createElementNS(SVGNS, n); for (var k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+  function mittel(arr) { var w = arr.filter(function (v) { return v !== null; }); return w.length ? w.reduce(function (s, v) { return s + v; }, 0) / w.length : null; }
+
+  var dFl = Z.flaeche_km2 - A.flaeche_km2;
+  var dProz = A.flaeche_km2 ? 100 * dFl / A.flaeche_km2 : null;
+  var n3 = Math.min(3, Math.floor(N / 2));
+  var tslA = mittel(J.slice(0, n3).map(function (z) { return z.schneegrenze_m; }));
+  var tslZ = mittel(J.slice(N - n3).map(function (z) { return z.schneegrenze_m; }));
+  var aarM = mittel(J.map(function (z) { return z.aar; }));
+
+  // ---------- Kopf ----------
+  main.insertAdjacentHTML("beforeend",
+    '<header class="kopf"><h1>' + G.titel + '</h1>' +
+    '<p class="unterzeile">' + G.unterzeile + ' – beobachtet von Sentinel-2, ' + A.jahr + ' bis ' + Z.jahr + '.</p>' +
+    '<dl class="eckdaten">' +
+      '<div><dt>Sauberes Eis und Schnee</dt><dd>' + (dFl > 0 ? "+" : "−") + zahl(Math.abs(dFl), 2) + ' km²' +
+        '<small>' + zahl(A.flaeche_km2, 1) + ' → ' + zahl(Z.flaeche_km2, 1) + ' km² (' + (dProz > 0 ? "+" : "−") + zahl(Math.abs(dProz), 0) + ' %)</small></dd></div>' +
+      '<div><dt>Schneegrenze am Sommerende</dt><dd>' + (tslA && tslZ ? (tslZ >= tslA ? "+" : "−") + zahl(Math.abs(tslZ - tslA)) + ' m' : '–') +
+        '<small>Mittel der ersten und letzten ' + n3 + ' Jahre</small></dd></div>' +
+      '<div><dt>Schneebedeckter Anteil (AAR)</dt><dd>' + zahl(aarM, 2) +
+        '<small>im Mittel; ausgeglichen wäre etwa 0,5–0,65</small></dd></div>' +
+    '</dl></header>' +
+    '<section aria-labelledby="t-gl" class="einleitung"><h2 id="t-gl">Der Gletscher</h2><p>' + G.text + '</p></section>');
+
+  // ---------- Vorher-Nachher ----------
+  var rgb = G.medien.rgb || [];
+  if (rgb.length >= 2) {
+    var j0 = rgb[0], j1 = rgb[rgb.length - 1];
+    main.insertAdjacentHTML("beforeend",
+      '<section aria-labelledby="t-vn"><h2 id="t-vn">' + j0 + ' und ' + j1 + ' im Vergleich</h2>' +
+      '<p class="notiz">Echtfarbenbilder vom Ende des Sommers. Gelb ist der Gletscherumriss. Zieh den Regler, um zwischen den Jahren zu wechseln.</p>' +
+      '<div class="vergleich" id="vergleich"><img src="bilder/rgb_' + j1 + '.jpg" alt="Gletscher ' + j1 + '">' +
+        '<img class="oben" id="vn-oben" src="bilder/rgb_' + j0 + '.jpg" alt="Gletscher ' + j0 + '">' +
+        '<div class="trenner" id="vn-trenner"></div>' +
+        '<span class="marke-jahr links">' + j0 + '</span><span class="marke-jahr rechts">' + j1 + '</span></div>' +
+      '<div class="regler"><label for="vn-regler">Anteil ' + j0 + ' / ' + j1 + '</label>' +
+      '<input id="vn-regler" type="range" min="0" max="100" value="50" aria-valuetext="Hälfte"></div></section>');
+    var reg = document.getElementById("vn-regler");
+    reg.addEventListener("input", function () {
+      var v = +reg.value;
+      document.getElementById("vn-oben").style.clipPath = "inset(0 " + (100 - v) + "% 0 0)";
+      document.getElementById("vn-trenner").style.left = v + "%";
+      reg.setAttribute("aria-valuetext", v + " Prozent " + j0);
+    });
+  } else if (G.medien["vergleich.png"]) {
+    main.insertAdjacentHTML("beforeend",
+      '<section aria-labelledby="t-vn"><h2 id="t-vn">' + A.jahr + ' und ' + Z.jahr + ' im Vergleich</h2>' +
+      '<figure style="margin:0"><img src="bilder/vergleich.png" alt="Vergleich erstes und letztes Jahr" style="width:100%;height:auto;border-radius:6px"></figure></section>');
+  }
+
+  // ---------- Jahr für Jahr ----------
+  if ((G.medien.jahre || []).length) {
+    main.insertAdjacentHTML("beforeend",
+      '<section aria-labelledby="t-jahr"><h2 id="t-jahr">Jahr für Jahr</h2>' +
+      '<p class="notiz">Links das Satellitenbild, rechts die Auswertung: weiß ist Schnee und Firn, blau blankes Eis, die rote Linie die Schneegrenze.</p>' +
+      '<div class="jahre" role="group" aria-label="Jahr wählen">' +
+        J.filter(function (z) { return G.medien.jahre.indexOf(z.jahr) >= 0; }).map(function (z) {
+          return '<button type="button" data-jahr="' + z.jahr + '">' + z.jahr + '</button>'; }).join("") +
+      '</div><div class="jahr-raster"><img id="jahr-bild" alt=""><div class="werte" id="jahr-werte" aria-live="polite"></div></div></section>');
+    var knoepfe = main.querySelectorAll(".jahre button");
+    var zeigeJahr = function (j) {
+      var z = J.filter(function (q) { return q.jahr === j; })[0];
+      document.getElementById("jahr-bild").src = "bilder/jahr_" + j + ".png";
+      document.getElementById("jahr-bild").alt = "Auswertung " + j;
+      document.getElementById("jahr-werte").innerHTML =
+        '<div class="datum">' + datum(z.datum) + '</div><dl>' +
+        '<dt>Eis und Schnee</dt><dd>' + zahl(z.flaeche_km2, 2) + ' km²</dd>' +
+        '<dt>davon blankes Eis</dt><dd>' + zahl(z.eis_km2, 2) + ' km²</dd>' +
+        '<dt>davon Schnee</dt><dd>' + zahl(z.schnee_km2, 2) + ' km²</dd>' +
+        '<dt>Schneegrenze</dt><dd>' + zahl(z.schneegrenze_m) + ' m</dd>' +
+        '<dt>AAR</dt><dd>' + zahl(z.aar, 2) + '</dd>' +
+        '<dt>Wolken über dem Gletscher</dt><dd>' + zahl(z.wolken_prozent, 1) + ' %</dd></dl>';
+      for (var k = 0; k < knoepfe.length; k++) knoepfe[k].setAttribute("aria-pressed", +knoepfe[k].dataset.jahr === j ? "true" : "false");
+    };
+    for (var k = 0; k < knoepfe.length; k++) knoepfe[k].addEventListener("click", function (e) { zeigeJahr(+e.currentTarget.dataset.jahr); });
+    zeigeJahr(+knoepfe[knoepfe.length - 1].dataset.jahr);
+  }
+
+  // ---------- Diagramme ----------
+  main.insertAdjacentHTML("beforeend",
+    '<section aria-labelledby="t-verl"><h2 id="t-verl">Die Entwicklung</h2>' +
+    '<p class="notiz">Jeder Wert stammt aus dem Bild vom Ende des jeweiligen Sommers.</p><div class="diagramme">' +
+    '<div class="diagramm"><h3>Fläche</h3><p>blankes Eis (blau) und Schnee (hell), in km²</p><svg id="d1" role="img" aria-label="Fläche je Jahr"></svg></div>' +
+    '<div class="diagramm"><h3>Schneegrenze</h3><p>Höhe, ab der Schnee überwiegt, in m ü. M.</p><svg id="d2" role="img" aria-label="Schneegrenze je Jahr"></svg></div>' +
+    '<div class="diagramm"><h3>Schneebedeckter Anteil (AAR)</h3><p>grün: Bereich einer etwa ausgeglichenen Bilanz</p><svg id="d3" role="img" aria-label="AAR je Jahr"></svg></div>' +
+    '</div></section>');
+  var W = 360, H = 230, L = 46, R = 8, T = 10, U = 26;
+  function rahmen(id, ymin, ymax, schritt, stellen) {
+    var s = document.getElementById(id); s.setAttribute("viewBox", "0 0 " + W + " " + H);
+    var fx = function (i) { return L + (i + 0.5) * (W - L - R) / N; };
+    var fy = function (v) { return T + (1 - (v - ymin) / (ymax - ymin)) * (H - T - U); };
+    for (var y = ymin; y <= ymax + 1e-9; y += schritt) {
+      el("line", { x1: L, x2: W - R, y1: fy(y), y2: fy(y), "class": "achse" }, s);
+      el("text", { x: L - 6, y: fy(y) + 4, "text-anchor": "end", "class": "achse-text" }, s).textContent = zahl(y, stellen);
+    }
+    J.forEach(function (z, i) {
+      if (N > 8 && i % 2 && i !== N - 1) return;
+      el("text", { x: fx(i), y: H - 6, "text-anchor": "middle", "class": "achse-text" }, s).textContent = "’" + String(z.jahr).slice(2);
+    });
+    return { s: s, fx: fx, fy: fy };
+  }
+  function runde(v) { var p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; }
+  var fmax = Math.max.apply(null, J.map(function (z) { return z.flaeche_km2; }));
+  var sf = runde(fmax / 4), d1 = rahmen("d1", 0, Math.ceil(fmax * 1.05 / sf) * sf, sf, 0);
+  var bb = (W - L - R) / N * 0.62;
+  J.forEach(function (z, i) {
+    el("rect", { x: d1.fx(i) - bb / 2, y: d1.fy(z.eis_km2), width: bb, height: d1.fy(0) - d1.fy(z.eis_km2), fill: "var(--eis)" }, d1.s);
+    el("rect", { x: d1.fx(i) - bb / 2, y: d1.fy(z.flaeche_km2), width: bb, height: d1.fy(z.eis_km2) - d1.fy(z.flaeche_km2), fill: "var(--schnee)" }, d1.s);
+  });
+  var tsl = J.map(function (z) { return z.schneegrenze_m; }).filter(function (v) { return v; });
+  if (tsl.length) {
+    var tmin = Math.floor((Math.min.apply(null, tsl) - 100) / 100) * 100, tmax = Math.ceil((Math.max.apply(null, tsl) + 100) / 100) * 100;
+    var d2 = rahmen("d2", tmin, tmax, runde((tmax - tmin) / 4), 0);
+    var pts = J.map(function (z, i) { return z.schneegrenze_m ? [d2.fx(i), d2.fy(z.schneegrenze_m)] : null; }).filter(Boolean);
+    el("path", { d: pts.map(function (p, i) { return (i ? "L" : "M") + p[0] + " " + p[1]; }).join(" "), fill: "none", stroke: "var(--verlust)", "stroke-width": 2.2 }, d2.s);
+    pts.forEach(function (p) { el("circle", { cx: p[0], cy: p[1], r: 3.5, fill: "var(--verlust)" }, d2.s); });
+  }
+  var d3 = rahmen("d3", 0, 1, 0.25, 2);
+  el("rect", { x: L, y: d3.fy(0.65), width: W - L - R, height: d3.fy(0.5) - d3.fy(0.65), fill: "#5aa65a", opacity: 0.18 }, d3.s);
+  el("path", { d: J.map(function (z, i) { return (i ? "L" : "M") + d3.fx(i) + " " + d3.fy(z.aar); }).join(" "), fill: "none", stroke: "var(--fels)", "stroke-width": 2.2 }, d3.s);
+  J.forEach(function (z, i) { el("circle", { cx: d3.fx(i), cy: d3.fy(z.aar), r: 3.5, fill: "var(--fels)" }, d3.s); });
+
+  // ---------- Erklärung ----------
+  main.insertAdjacentHTML("beforeend",
+    '<section aria-labelledby="t-mess"><h2 id="t-mess">So wird gemessen</h2><div class="erklaerung">' +
+    '<div><p>Grundlage sind Bilder der europäischen Satelliten <strong>Sentinel-2</strong>. Sie fotografieren die Alpen alle paar Tage mit 10 m Auflösung, auch in Wellenlängen, die das menschliche Auge nicht sieht.</p>' +
+    '<p>Für jedes Jahr wählt ein Python-Script automatisch <strong>ein Bild vom Ende des Sommers</strong> (Mitte Juli bis Anfang Oktober): wolkenfrei über dem Gletscher und mit möglichst wenig Schnee. Dann ist der Winterschnee so weit geschmolzen wie in diesem Jahr möglich, und man sieht, wie viel Eis der Sommer freigelegt hat.</p></div>' +
+    '<div><p><strong>Eis und Schnee</strong> erkennt das Script daran, dass beide viel sichtbares, aber kaum kurzwelliges Infrarotlicht zurückwerfen. <strong>Schnee</strong> ist dabei deutlich heller als blankes Eis.</p>' +
+    '<p>Mit einem Höhenmodell ergibt sich die <strong>Schneegrenze</strong>: die Höhe, ab der Schnee überwiegt. Der <strong>AAR</strong> ist der Anteil der Fläche, die über den Sommer schneebedeckt bleibt. Liegt er deutlich unter etwa 0,5 bis 0,65, schmilzt mehr Eis, als durch neuen Schnee nachkommt: Der Gletscher verliert Masse.</p></div>' +
+    '</div></section>' +
+    '<section aria-labelledby="t-grenz"><h2 id="t-grenz">Was die Zahlen nicht zeigen</h2><ul class="grenzen">' +
+    '<li><strong>Schuttbedeckte Gletscherteile</strong> sehen im Satellitenbild aus wie Fels und zählen nicht als Eis. Die Fläche ist deshalb kleiner als die offizielle Gletscherfläche' + (G.umriss_km2 ? ' (Umriss: ' + zahl(G.umriss_km2, 1) + ' km²)' : '') + '.</li>' +
+    '<li><strong>Früher Neuschnee</strong> im September lässt die Schneegrenze tiefer erscheinen, als sie im Sommer war.</li>' +
+    '<li>Der <strong>Gletscherumriss</strong> stammt aus OpenStreetMap und ist eine Obergrenze. Innerhalb davon wird jedes Jahr neu gemessen.</li>' +
+    '<li>Die Höhen stammen aus einem Höhenmodell mit 90 m Auflösung; die Schneegrenze ist auf etwa 50 m genau.</li>' +
+    '<li>Alle Werte sind automatisch erzeugt und nicht von Hand geprüft. Für offizielle Messreihen siehe die nationalen Gletschermessnetze.</li></ul></section>');
+
+  // ---------- Tabelle ----------
+  main.insertAdjacentHTML("beforeend",
+    '<section aria-labelledby="t-tab"><h2 id="t-tab">Alle Werte</h2><div class="tabelle-huelle" tabindex="0" aria-label="Tabelle der Jahreswerte"><table><thead><tr>' +
+    '<th scope="col">Jahr</th><th scope="col">Bild vom</th><th scope="col">Eis + Schnee km²</th><th scope="col">Eis km²</th><th scope="col">Schnee km²</th><th scope="col">Schneegrenze m</th><th scope="col">AAR</th></tr></thead><tbody>' +
+    J.slice().reverse().map(function (z) {
+      return '<tr><td>' + z.jahr + '</td><td>' + datum(z.datum) + '</td><td>' + zahl(z.flaeche_km2, 2) + '</td><td>' + zahl(z.eis_km2, 2) +
+        '</td><td>' + zahl(z.schnee_km2, 2) + '</td><td>' + zahl(z.schneegrenze_m) + '</td><td>' + zahl(z.aar, 2) + '</td></tr>'; }).join("") +
+    '</tbody></table></div>' +
+    (G.medien["jahreswerte.csv"] ? '<p><a href="jahreswerte.csv" download>Jahreswerte als CSV herunterladen</a></p>' : '') + '</section>');
+
+  // ---------- Fußzeile ----------
+  main.insertAdjacentHTML("beforeend",
+    '<footer><p>Enthält modifizierte Copernicus-Sentinel-Daten ' + A.jahr + '–' + Z.jahr + ', abgerufen über den Copernicus Data Space. ' +
+    'Höhenmodell: Copernicus DEM GLO-90 © DLR e.V. 2010–2014 und © Airbus Defence and Space GmbH 2014–2018, bereitgestellt im Rahmen von COPERNICUS durch die Europäische Union und die ESA. ' +
+    'Gletscherumriss: © ' + G.umriss_quelle + '.</p>' +
+    '<p>Seite erzeugt am ' + datum(G.erstellt) + '.</p></footer>');
+})();
+</script>
+</body>
+</html>
