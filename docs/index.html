@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B-51 – Drift eines Eisbergs</title>
+<meta name="description" content="Position, Drift und Größe von Eisberg B-51 (Getz-Schelfeis), gemessen auf Sentinel-1-Radarbildern">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --eis: #e9eff2;
+    --flaeche: #f6f9fa;
+    --tiefsee: #102a3c;
+    --grau: #536b7b;
+    --linie: #c3d1d9;
+    --wasser: #2b6c8f;
+    --signal: #d9480f;
+    --signal-text: #b93c0a;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --eis: #0d1b25;
+      --flaeche: #132532;
+      --tiefsee: #e2ebf0;
+      --grau: #95aab7;
+      --linie: #2a4252;
+      --wasser: #7fb6d4;
+      --signal: #ff7a3d;
+      --signal-text: #ff8f5c;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--eis);
+    color: var(--tiefsee);
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    font-variation-settings: "wdth" 100;
+  }
+  .rahmen { max-width: 1120px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+  a { color: var(--wasser); text-underline-offset: 2px; }
+  a:focus-visible, input:focus-visible, button:focus-visible {
+    outline: 3px solid var(--signal); outline-offset: 3px; border-radius: 2px;
+  }
+
+  /* Kopf: der Name des Eisbergs als Hauptmotiv */
+  .kopf { padding: clamp(28px, 6vw, 64px) 0 8px; }
+  .kopf-raster {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 48px;
+    align-items: end;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(5.5rem, 21vw, 15rem);
+    line-height: 0.8;
+    font-weight: 800;
+    font-variation-settings: "wdth" 125;
+    letter-spacing: -0.035em;
+    color: var(--tiefsee);
+  }
+  .position { padding-bottom: 0.6rem; }
+  .position-wert {
+    font-size: clamp(1.6rem, 3.6vw, 2.5rem);
+    font-weight: 300;
+    font-variation-settings: "wdth" 112;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .position-wert span { display: block; }
+  .position-text { color: var(--grau); margin: 6px 0 0; font-size: 0.95rem; }
+  .vorspann {
+    max-width: 62ch; margin: 32px 0 0; font-size: clamp(1.1rem, 2vw, 1.3rem);
+    line-height: 1.5;
+  }
+
+  section { padding: clamp(40px, 7vw, 72px) 0 0; }
+  h2 {
+    margin: 0 0 6px;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.15;
+    font-weight: 700;
+    font-variation-settings: "wdth" 112;
+  }
+  .unterzeile { margin: 0 0 22px; color: var(--grau); max-width: 68ch; }
+
+  /* Driftbahn */
+  .bahn-raster { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; }
+  .karte {
+    background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px;
+    padding: 8px;
+  }
+  .karte svg { display: block; width: 100%; height: auto; }
+  .gitter { stroke: var(--linie); stroke-width: 1; }
+  .gitter-text { fill: var(--grau); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .bahn { fill: none; stroke: var(--wasser); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+  .punkt { fill: var(--flaeche); stroke: var(--wasser); stroke-width: 1.5; }
+  .punkt.bruch { fill: var(--signal); stroke: var(--signal); }
+  .start-ring { fill: none; stroke: var(--tiefsee); stroke-width: 2; }
+  .marke { fill: var(--signal); stroke: var(--flaeche); stroke-width: 2.5; }
+  .marke-halo { fill: var(--signal); opacity: 0.18; }
+  .beschriftung { fill: var(--tiefsee); font-size: 16px; font-weight: 600; }
+  .nord { fill: var(--grau); font-size: 15px; font-weight: 700; }
+
+  .regler { margin: 18px 4px 4px; }
+  .regler label { display: block; font-size: 0.9rem; color: var(--grau); margin-bottom: 6px; }
+  input[type=range] { width: 100%; accent-color: var(--signal); }
+
+  .ablesung { border-top: 3px solid var(--signal); padding-top: 14px; }
+  .ablesung-datum {
+    font-size: 1.6rem; font-weight: 700; font-variation-settings: "wdth" 112;
+    font-variant-numeric: tabular-nums; line-height: 1.2;
+  }
+  dl { margin: 14px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; }
+  dt { color: var(--grau); font-size: 0.95rem; }
+  dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; white-space: nowrap; }
+  .hinweis-bruch { margin: 12px 0 0; color: var(--signal-text); font-weight: 600; font-size: 0.95rem; }
+
+  .bilanz {
+    margin-top: 28px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid var(--linie);
+  }
+  .bilanz div { padding: 16px 16px 0 0; }
+  .bilanz b {
+    display: block; font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 600;
+    font-variation-settings: "wdth" 108; font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .bilanz span { color: var(--grau); font-size: 0.92rem; }
+
+  /* Radarbilder */
+  .radar-raster { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 32px; align-items: start; }
+  figure { margin: 0; }
+  figure img { display: block; width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--linie); background: #fff; }
+  figcaption { color: var(--grau); font-size: 0.92rem; margin-top: 8px; }
+  .legende { list-style: none; padding: 0; margin: 0 0 16px; }
+  .legende li { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+  .legende i { flex: none; width: 14px; height: 4px; border-radius: 2px; transform: translateY(-3px); }
+  .text-schmal { max-width: 52ch; }
+
+  /* Diagramme */
+  .diagramme { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+  .diagramm { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 6px; padding: 14px 14px 8px; }
+  .diagramm h3 { margin: 0 0 2px; font-size: 1.05rem; font-weight: 700; }
+  .diagramm p { margin: 0 0 6px; color: var(--grau); font-size: 0.9rem; }
+  .diagramm svg { display: block; width: 100%; height: auto; }
+  .achse { stroke: var(--linie); }
+  .achse-text { fill: var(--grau); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .kurve { fill: none; stroke-width: 2.2; stroke-linejoin: round; }
+
+  /* Tabelle */
+  .tabelle-huelle { overflow-x: auto; border: 1px solid var(--linie); border-radius: 6px; background: var(--flaeche); max-height: 460px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+  th, td { padding: 9px 14px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--linie); }
+  th:first-child, td:first-child, th:last-child, td:last-child { text-align: left; }
+  th { position: sticky; top: 0; background: var(--flaeche); font-weight: 600; color: var(--grau); }
+  tr[aria-current="true"] td { background: color-mix(in srgb, var(--signal) 14%, transparent); }
+  td.bem { color: var(--signal-text); white-space: normal; min-width: 14ch; }
+  .unter-tabelle { margin: 10px 0 0; font-size: 0.95rem; }
+
+  footer { margin-top: clamp(48px, 8vw, 88px); padding: 28px 0 40px; border-top: 1px solid var(--linie); color: var(--grau); font-size: 0.92rem; }
+  footer p { max-width: 75ch; margin: 0 0 10px; }
+
+  .fehler { margin: 40px 0; padding: 18px 20px; border-left: 4px solid var(--signal); background: var(--flaeche); }
+
+  @media (max-width: 860px) {
+    .kopf-raster, .bahn-raster, .radar-raster, .diagramme { grid-template-columns: minmax(0, 1fr); }
+    .bilanz { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .position-wert { white-space: normal; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bahn.zeichnen { animation: zeichnen 2.2s cubic-bezier(.4, 0, .2, 1) both; }
+    .marke, .marke-halo { transition: cx .25s ease, cy .25s ease; }
+  }
+  @keyframes zeichnen { from { stroke-dashoffset: var(--laenge); } to { stroke-dashoffset: 0; } }
+</style>
+</head>
+<body>
+<main class="rahmen" id="inhalt">
+  <noscript><p class="fehler">Diese Seite braucht JavaScript, um die Messdaten anzuzeigen.</p></noscript>
+</main>
+<script src="daten.js"></script>
+<script>
+(function () {
+  "use strict";
+  var D = window.EISBERG_DATEN;
+  var main = document.getElementById("inhalt");
+  if (!D || !D.punkte || D.punkte.length < 2) {
+    main.insertAdjacentHTML("beforeend", '<p class="fehler">Keine Messdaten gefunden. ' +
+      'Die Datei <code>daten.js</code> fehlt oder ist leer. Erzeuge sie mit ' +
+      '<code>python webseite_erstellen.py</code>.</p>');
+    return;
+  }
+  var P = D.punkte;
+  var N = P.length;
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  // ---------- Hilfsfunktionen ----------
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function zahl(x, stellen) {
+    if (x === null || x === undefined || isNaN(x)) return "–";
+    return Number(x).toLocaleString("de-DE", { minimumFractionDigits: stellen || 0, maximumFractionDigits: stellen || 0 });
+  }
+  function datum(iso, lang) {
+    var d = new Date(iso + "T12:00:00Z");
+    return d.toLocaleDateString("de-DE", lang ? { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }
+                                              : { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+  }
+  function grad(wert, pos, neg) {
+    var a = Math.abs(wert), g = Math.floor(a), m = Math.round((a - g) * 60);
+    if (m === 60) { g += 1; m = 0; }
+    return g + "°" + (m < 10 ? "0" : "") + m + "′ " + (wert < 0 ? neg : pos);
+  }
+  function breite(w) { return grad(w, "N", "S"); }
+  function laenge(w) { return grad(w, "O", "W"); }
+  function tageZwischen(a, b) { return Math.round((new Date(b) - new Date(a)) / 864e5); }
+  function el(name, attrs, eltern) {
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (eltern) eltern.appendChild(e);
+    return e;
+  }
+  function runde(schritt) {
+    var p = Math.pow(10, Math.floor(Math.log10(schritt))), f = schritt / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+
+  var erster = P[0], letzter = P[N - 1];
+  var tage = tageZwischen(erster.datum, letzter.datum);
+  var brueche = P.filter(function (p) { return /abgebrochen/.test(p.bemerkung || ""); });
+
+  // ---------- Kopf ----------
+  var herkunft = D.herkunft ? " vom " + esc(D.herkunft) : "";
+  main.insertAdjacentHTML("beforeend",
+    '<header class="kopf"><div class="kopf-raster">' +
+      '<h1>' + esc(D.kurz) + '</h1>' +
+      '<div class="position" aria-label="Letzte gemessene Position">' +
+        '<div class="position-wert"><span>' + breite(letzter.lat) + '</span><span>' + laenge(letzter.lon) + '</span></div>' +
+        '<p class="position-text">zuletzt gemessen am ' + datum(letzter.datum, true) + '</p>' +
+      '</div>' +
+    '</div>' +
+    '<p class="vorspann">Ein Eisberg' + herkunft + ', verfolgt auf ' + N + ' Radarbildern des Satelliten Sentinel-1. ' +
+      'In ' + zahl(tage) + ' Tagen hat er ' + zahl(letzter.gesamtstrecke_km) + ' km zurückgelegt und liegt jetzt ' +
+      zahl(letzter.abstand_start_km) + ' km von seiner ersten Position entfernt.</p>' +
+    '</header>');
+
+  // ---------- Driftbahn ----------
+  main.insertAdjacentHTML("beforeend",
+    '<section aria-labelledby="t-bahn"><h2 id="t-bahn">Der Weg seit dem ' + datum(erster.datum, true) + '</h2>' +
+    '<p class="unterzeile">Jeder Punkt ist eine Messung. Norden ist oben. Mit dem Regler wählst du einen Tag aus.</p>' +
+    '<div class="bahn-raster">' +
+      '<div><div class="karte"><svg id="bahn-svg" role="img" aria-label="Karte der Driftbahn"></svg></div>' +
+        '<div class="regler"><label for="regler">Messung auswählen</label>' +
+        '<input id="regler" type="range" min="0" max="' + (N - 1) + '" value="' + (N - 1) + '" step="1"></div></div>' +
+      '<div class="ablesung" aria-live="polite" id="ablesung"></div>' +
+    '</div>' +
+    '<div class="bilanz">' +
+      '<div><b>' + zahl(letzter.gesamtstrecke_km) + ' km</b><span>Driftweg</span></div>' +
+      '<div><b>' + zahl(letzter.abstand_start_km) + ' km</b><span>Luftlinie zum Start</span></div>' +
+      '<div><b>' + zahl(erster.flaeche_km2) + ' → ' + zahl(letzter.flaeche_km2) + '</b><span>Fläche in km²</span></div>' +
+      '<div><b>' + zahl(tage > 0 ? letzter.gesamtstrecke_km / tage : 0, 2) + '</b><span>km pro Tag im Mittel</span></div>' +
+    '</div></section>');
+
+  var svg = document.getElementById("bahn-svg");
+  var B = 820, H = 500, R = 46;
+  var latM = P.reduce(function (s, p) { return s + p.lat; }, 0) / N;
+  var kos = Math.cos(latM * Math.PI / 180);
+  var xs = P.map(function (p) { return p.lon * kos; }), ys = P.map(function (p) { return p.lat; });
+  var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+  var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  var spanne = Math.max(x1 - x0, (y1 - y0) * (B - 2 * R) / (H - 2 * R), 0.05);
+  var mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  var mass = (B - 2 * R) / (spanne * 1.15);
+  function px(p) { return [B / 2 + (p.lon * kos - mx) * mass, H / 2 - (p.lat - my) * mass]; }
+  svg.setAttribute("viewBox", "0 0 " + B + " " + H);
+
+  var g = el("g", {}, svg);
+  var lonMin = (mx - B / 2 / mass) / kos, lonMax = (mx + B / 2 / mass) / kos;
+  var latMin = my - H / 2 / mass, latMax = my + H / 2 / mass;
+  var sLon = runde((lonMax - lonMin) / 5), sLat = runde((latMax - latMin) / 4);
+  for (var lo = Math.ceil(lonMin / sLon) * sLon; lo <= lonMax; lo += sLon) {
+    var xx = B / 2 + (lo * kos - mx) * mass;
+    el("line", { x1: xx, x2: xx, y1: 0, y2: H, "class": "gitter" }, g);
+    el("text", { x: xx + 5, y: H - 10, "class": "gitter-text" }, g).textContent = laenge(lo);
+  }
+  for (var la = Math.ceil(latMin / sLat) * sLat; la <= latMax; la += sLat) {
+    var yy = H / 2 - (la - my) * mass;
+    el("line", { x1: 0, x2: B, y1: yy, y2: yy, "class": "gitter" }, g);
+    el("text", { x: 8, y: yy - 7, "class": "gitter-text" }, g).textContent = breite(la);
+  }
+  el("path", { d: "M" + (B - 26) + " 40 l7 -22 l7 22 l-7 -6 z", fill: "currentColor", "class": "nord" }, svg);
+  el("text", { x: B - 19, y: 60, "text-anchor": "middle", "class": "nord" }, svg).textContent = "N";
+
+  var pfad = P.map(function (p, i) { var q = px(p); return (i ? "L" : "M") + q[0].toFixed(1) + " " + q[1].toFixed(1); }).join(" ");
+  var linie = el("path", { d: pfad, "class": "bahn" }, svg);
+  var lang = linie.getTotalLength();
+  linie.style.strokeDasharray = lang;
+  linie.style.setProperty("--laenge", lang);
+  linie.classList.add("zeichnen");
+
+  P.forEach(function (p) {
+    var q = px(p);
+    el("circle", { cx: q[0], cy: q[1], r: /abgebrochen/.test(p.bemerkung || "") ? 5 : 3.2,
+                   "class": "punkt" + (/abgebrochen/.test(p.bemerkung || "") ? " bruch" : "") }, svg);
+  });
+  var qs = px(erster), qe = px(letzter);
+  el("circle", { cx: qs[0], cy: qs[1], r: 9, "class": "start-ring" }, svg);
+  var tStart = el("text", { x: qs[0], y: qs[1] - 17, "text-anchor": "middle", "class": "beschriftung" }, svg);
+  tStart.textContent = "Start " + datum(erster.datum);
+  var halo = el("circle", { cx: qe[0], cy: qe[1], r: 16, "class": "marke-halo" }, svg);
+  var marke = el("circle", { cx: qe[0], cy: qe[1], r: 7, "class": "marke" }, svg);
+
+  // ---------- Ablesung + Regler ----------
+  var ablesung = document.getElementById("ablesung");
+  var regler = document.getElementById("regler");
+  function zeige(i) {
+    var p = P[i], q = px(p);
+    marke.setAttribute("cx", q[0]); marke.setAttribute("cy", q[1]);
+    halo.setAttribute("cx", q[0]); halo.setAttribute("cy", q[1]);
+    ablesung.innerHTML =
+      '<div class="ablesung-datum">' + datum(p.datum, true) + '</div>' +
+      '<dl>' +
+        '<dt>Position</dt><dd>' + breite(p.lat) + '<br>' + laenge(p.lon) + '</dd>' +
+        '<dt>Fläche</dt><dd>' + zahl(p.flaeche_km2) + ' km²</dd>' +
+        '<dt>Größe</dt><dd>' + zahl(p.laenge_km) + ' × ' + zahl(p.breite_km) + ' km</dd>' +
+        '<dt>Drift seit letzter Messung</dt><dd>' + zahl(p.drift_km, 1) + ' km</dd>' +
+        '<dt>Geschwindigkeit</dt><dd>' + zahl(p.geschwindigkeit_km_tag, 2) + ' km/Tag</dd>' +
+        '<dt>Messung</dt><dd>' + (i + 1) + ' von ' + N + '</dd>' +
+      '</dl>' +
+      (/abgebrochen/.test(p.bemerkung || "") ? '<p class="hinweis-bruch">Deutlich kleiner als zuvor – vermutlich ist ein Stück abgebrochen.</p>' : "");
+    regler.setAttribute("aria-valuetext", datum(p.datum, true));
+    var zeilen = document.querySelectorAll("#tabelle tbody tr");
+    for (var k = 0; k < zeilen.length; k++) zeilen[k].setAttribute("aria-current", zeilen[k].dataset.i == i ? "true" : "false");
+  }
+  regler.addEventListener("input", function () { zeige(+regler.value); });
+
+  // ---------- Radarbilder ----------
+  if (D.medien.indexOf("eisberg_animation.gif") >= 0) {
+    main.insertAdjacentHTML("beforeend",
+      '<section aria-labelledby="t-radar"><h2 id="t-radar">So sieht ihn das Radar</h2>' +
+      '<p class="unterzeile">Sentinel-1 misst mit Mikrowellen und sieht deshalb auch durch Wolken und in der Polarnacht.</p>' +
+      '<div class="radar-raster"><figure><img src="eisberg_animation.gif" alt="Animation der Radarbilder: der Eisberg mit rot markiertem Umriss" loading="lazy">' +
+      '<figcaption>Ausschnitt 80 × 80 km, der mit dem Eisberg mitwandert.</figcaption></figure>' +
+      '<div class="text-schmal"><ul class="legende">' +
+        '<li><i style="background:#ff3b30"></i><span>Rot: der automatisch erkannte Umriss des Eisbergs</span></li>' +
+        '<li><i style="background:#ffd60a"></i><span>Gelb: wo der Eisberg nach seiner bisherigen Drift erwartet wurde</span></li></ul>' +
+      '<p>Helle Flächen werfen viel Radarstrahlung zurück: Eisberge, Schelfeis und raues Meereis. Ruhiges offenes Wasser erscheint fast schwarz.</p>' +
+      '<p>Die Bilder sind in einer Polarprojektion gezeichnet. Anders als in der Karte oben ist darin nicht Norden oben.</p></div></div>' +
+      (D.medien.indexOf("driftbahn.png") >= 0 ? '<figure style="margin-top:32px"><img src="driftbahn.png" alt="Driftbahn auf einer Karte mit Küstenlinie" loading="lazy"><figcaption>Driftbahn mit Küstenlinie, erstellt vom Auswertungsscript.</figcaption></figure>' : "") +
+      '</section>');
+  }
+
+  // ---------- Diagramme ----------
+  main.insertAdjacentHTML("beforeend",
+    '<section aria-labelledby="t-verlauf"><h2 id="t-verlauf">Größe und Tempo</h2>' +
+    '<p class="unterzeile">Einzelne Ausreißer entstehen, wenn Meereis oder Schelfeis den Umriss im Radarbild verfälschen.</p>' +
+    '<div class="diagramme">' +
+      '<div class="diagramm"><h3>Fläche</h3><p>in km²</p><svg id="d-flaeche" role="img" aria-label="Fläche des Eisbergs über die Zeit"></svg></div>' +
+      '<div class="diagramm"><h3>Driftgeschwindigkeit</h3><p>in km pro Tag</p><svg id="d-tempo" role="img" aria-label="Driftgeschwindigkeit über die Zeit"></svg></div>' +
+    '</div></section>');
+
+  function diagramm(id, werte, farbe, markiere) {
+    var s = document.getElementById(id), W = 520, Ht = 240, L = 44, Rr = 12, T = 12, U = 28;
+    s.setAttribute("viewBox", "0 0 " + W + " " + Ht);
+    var pk = werte.filter(function (w) { return w.y !== null && !isNaN(w.y); });
+    if (pk.length < 2) return;
+    var t0 = new Date(pk[0].d).getTime(), t1 = new Date(pk[pk.length - 1].d).getTime();
+    var ymax = Math.max.apply(null, pk.map(function (w) { return w.y; })) * 1.12 || 1;
+    var schritt = runde(ymax / 4);
+    function fx(d) { return L + (new Date(d).getTime() - t0) / (t1 - t0 || 1) * (W - L - Rr); }
+    function fy(y) { return T + (1 - y / ymax) * (Ht - T - U); }
+    for (var y = 0; y <= ymax; y += schritt) {
+      el("line", { x1: L, x2: W - Rr, y1: fy(y), y2: fy(y), "class": "achse" }, s);
+      el("text", { x: L - 6, y: fy(y) + 4, "text-anchor": "end", "class": "achse-text" }, s).textContent = zahl(y, schritt < 1 ? 1 : 0);
+    }
+    var monat = new Date(pk[0].d); monat.setUTCDate(1); monat.setUTCMonth(monat.getUTCMonth() + 1);
+    var mon = Math.max(1, Math.ceil(((t1 - t0) / 2.63e9) / 6));
+    for (var m = new Date(monat), k = 0; m.getTime() <= t1; m.setUTCMonth(m.getUTCMonth() + 1), k++) {
+      if (k % mon) continue;
+      var xm = fx(m.toISOString().slice(0, 10));
+      el("text", { x: xm, y: Ht - 8, "text-anchor": "middle", "class": "achse-text" }, s)
+        .textContent = m.toLocaleDateString("de-DE", { month: "short", year: "2-digit", timeZone: "UTC" });
+    }
+    el("path", { d: pk.map(function (w, i) { return (i ? "L" : "M") + fx(w.d).toFixed(1) + " " + fy(w.y).toFixed(1); }).join(" "),
+                 "class": "kurve", stroke: farbe }, s);
+    pk.forEach(function (w) {
+      var b = markiere && markiere(w);
+      el("circle", { cx: fx(w.d), cy: fy(w.y), r: b ? 5 : 2.5, fill: b ? "var(--signal)" : farbe }, s);
+    });
+  }
+  diagramm("d-flaeche", P.map(function (p) { return { d: p.datum, y: p.flaeche_km2, b: p.bemerkung }; }), "var(--wasser)",
+           function (w) { return /abgebrochen/.test(w.b || ""); });
+  diagramm("d-tempo", P.slice(1).map(function (p) { return { d: p.datum, y: p.geschwindigkeit_km_tag }; }), "var(--tiefsee)");
+
+  // ---------- Tabelle ----------
+  var zeilen = P.map(function (p, i) { return { p: p, i: i }; }).reverse().map(function (z) {
+    var p = z.p;
+    return '<tr data-i="' + z.i + '"><td>' + datum(p.datum) + '</td><td>' + breite(p.lat) + '</td><td>' + laenge(p.lon) +
+      '</td><td>' + zahl(p.flaeche_km2) + '</td><td>' + zahl(p.laenge_km) + ' × ' + zahl(p.breite_km) +
+      '</td><td>' + zahl(p.drift_km, 1) + '</td><td>' + zahl(p.geschwindigkeit_km_tag, 2) +
+      '</td><td class="bem">' + esc(p.bemerkung || "") + '</td></tr>';
+  }).join("");
+  main.insertAdjacentHTML("beforeend",
+    '<section aria-labelledby="t-tabelle"><h2 id="t-tabelle">Alle Messungen</h2>' +
+    '<p class="unterzeile">Neueste zuerst. Die markierte Zeile gehört zum Tag, den du oben gewählt hast.</p>' +
+    '<div class="tabelle-huelle" tabindex="0" aria-label="Tabelle aller Messungen, scrollbar"><table id="tabelle"><thead><tr>' +
+      '<th scope="col">Datum</th><th scope="col">Breite</th><th scope="col">Länge</th><th scope="col">Fläche km²</th>' +
+      '<th scope="col">Größe km</th><th scope="col">Drift km</th><th scope="col">km/Tag</th><th scope="col">Bemerkung</th>' +
+    '</tr></thead><tbody>' + zeilen + '</tbody></table></div>' +
+    (D.medien.indexOf("eisberg_positionen.csv") >= 0 ? '<p class="unter-tabelle"><a href="eisberg_positionen.csv" download>Messdaten als CSV herunterladen</a></p>' : "") +
+    '</section>');
+
+  // ---------- Fußzeile ----------
+  main.insertAdjacentHTML("beforeend",
+    '<footer><p><strong>Wie gemessen wurde:</strong> Ein Python-Script lädt etwa alle sechs Tage einen 80 × 80 km großen Ausschnitt ' +
+    'eines Sentinel-1-Radarbilds rund um die erwartete Position, sucht darin das helle Objekt mit passender Größe und berechnet ' +
+    'dessen Mittelpunkt und Fläche. Die Werte sind automatisch erzeugt und nicht von Hand geprüft.</p>' +
+    '<p>Enthält modifizierte Copernicus-Sentinel-Daten ' + letzter.datum.slice(0, 4) + ', abgerufen über den Copernicus Data Space. ' +
+    'Name und Ausgangsposition des Eisbergs: <a href="https://usicecenter.gov/">U.S. National Ice Center</a>. ' +
+    'Zum Vergleich: <a href="https://www.scp.byu.edu/current_icebergs.html">aktuelle Eisbergpositionen der BYU</a>.</p>' +
+    '<p>Seite erzeugt am ' + datum(D.erstellt, true) + '.</p></footer>');
+
+  zeige(N - 1);
+})();
+</script>
+</body>
+</html>
